@@ -52,6 +52,7 @@ function HomeScreen({ navigation }) {
 
 function LightSensorScreen() {
   const [{ illuminance }, setData] = useState({ illuminance: 0 });
+  const [available, setAvailable] = useState(null);
   const subscription = useRef(null);
 
   const subscribe = () => {
@@ -80,20 +81,42 @@ function LightSensorScreen() {
   };
 
   useEffect(() => {
-    toggleSubscribtion();
+    let mounted = true;
+
+    const init = async () => {
+      const sensorAvailable = Platform.OS === 'android' && (await LightSensor.isAvailableAsync());
+      if (!mounted) {
+        return;
+      }
+
+      setAvailable(sensorAvailable);
+      if (sensorAvailable) {
+        toggleSubscribtion();
+      }
+    };
+
+    init();
     return () => {
+      mounted = false;
       unsubscribe();
     };
   }, []);
 
   const onAndroid = Platform.OS === 'android';
+  const canUseSensor = available === true;
 
   return (
     <View style={sensorStyles.sensor}>
       <Text style={sensorStyles.title}>Light Sensor:</Text>
-      <Text style={sensorStyles.value}>{onAndroid ? `Illuminance: ${illuminance} lx` : 'Only available on Android'}</Text>
+      <Text style={sensorStyles.value}>
+        {!onAndroid
+          ? 'Only available on Android'
+          : available === false
+            ? 'Light sensor not available on this device'
+            : `Illuminance: ${illuminance} lx`}
+      </Text>
       <View style={sensorStyles.buttonContainer}>
-        <TouchableOpacity onPress={toggleSubscribtion} style={sensorStyles.button} disabled={!onAndroid}>
+        <TouchableOpacity onPress={toggleSubscribtion} style={sensorStyles.button} disabled={!canUseSensor}>
           <Text style={sensorStyles.buttonText}>Toggle</Text>
         </TouchableOpacity>
       </View>
