@@ -1,126 +1,193 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useFonts } from 'expo-font';
+import { useMemo, useState } from 'react';
 import {
-  Button,
+  Appearance,
   Image,
+  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
+  useColorScheme,
   View,
 } from 'react-native';
+import { Header } from './components/Header';
+import { SettingsPanel } from './components/SettingsPanel';
+import { resolveThemeColors } from './colors/Colors';
+import { fontOptions, useAppSettings } from './hooks/useAppSettings';
 
 export default function App() {
-  const [on, setOn] = useState(false);
-  const [text, setText] = useState('Marek');
-  const [light, setLight] = useState(false);
-  const [radiusInput, setRadiusInput] = useState('25');
-  const [circleColor, setCircleColor] = useState('darkblue');
+  const [loaded] = useFonts({
+    LatoRegular: require('./assets/fonts/Lato-Regular.ttf'),
+    PoppinsRegular: require('./assets/fonts/Poppins-Regular.ttf'),
+    NanumGothicRegular: require('./assets/fonts/NanumGothic-Regular.ttf'),
+  });
+  const [resizeModeIndex, setResizeModeIndex] = useState(0);
+  const resizeModes = ['contain', 'center', 'stretch', 'cover', 'repeat'];
+  const colorScheme = useColorScheme();
+  const { settings, applySettings } = useAppSettings();
 
-  const parsedRadius = Number.parseInt(radiusInput, 10);
-  const radius = Number.isNaN(parsedRadius) ? 25 : Math.max(10, parsedRadius);
+  const themeColors = useMemo(
+    () => resolveThemeColors(colorScheme, settings),
+    [colorScheme, settings]
+  );
 
-  const getRandomColor = () => {
-    const channels = Array.from({ length: 3 }, () =>
-      Math.floor(Math.random() * 256)
+  if (!loaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Ladowanie czcionek...</Text>
+      </View>
     );
-    return `rgb(${channels[0]}, ${channels[1]}, ${channels[2]})`;
-  };
+  }
 
-  const handleCirclePress = () => {
-    setLight((state) => !state);
-    setCircleColor(getRandomColor());
+  const nextResizeMode = () => {
+    setResizeModeIndex((state) => (state + 1) % resizeModes.length);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.paragraph}>
-        Hello
-        <Text style={styles.bold}> {text}</Text>
-        !
-      </Text>
+    <ImageBackground
+      source={require('./assets/images/wsei-logo.png')}
+      imageStyle={styles.backgroundImage}
+      style={styles.background}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Header
+          size={34}
+          themeColors={themeColors}
+          fontFamily={settings.fontFamily}
+        >
+          Index
+        </Header>
 
-      <TextInput
-        placeholder="Podaj promien kola"
-        value={radiusInput}
-        onChangeText={setRadiusInput}
-        keyboardType="numeric"
-        style={styles.radiusInput}
-      />
+        <Text style={styles.subtitle(themeColors, settings.fontFamily)}>
+          Lab 10: czcionki, obrazy, ikony i kolory
+        </Text>
 
-      <Pressable onPress={handleCirclePress}>
-        <View style={styles.circle({ light, radius, color: circleColor })} />
-      </Pressable>
+        <Image
+          source={require('./assets/images/wsei-logo.png')}
+          style={styles.staticImage(resizeModes[resizeModeIndex])}
+        />
 
-      <Button
-        title="Click"
-        onPress={() => setText('Karol')}
-        color="darkblue"
-      />
+        <Pressable onPress={nextResizeMode} style={styles.button(themeColors)}>
+          <Text style={styles.buttonText}>Zmien resizeMode: {resizeModes[resizeModeIndex]}</Text>
+        </Pressable>
 
-      <TextInput
-        placeholder="placeholder"
-        multiline
-        editable
-        numberOfLines={4}
-        autoFocus
-        keyboardType="default"
-        autoCorrect
-        style={styles.multiInput}
-      />
+        <Image
+          source={{ uri: 'https://reactjs.org/logo-og.png', cache: 'force-cache' }}
+          style={styles.dynamicImage}
+        />
 
-      <Image
-        source={{ uri: 'https://reactnative.dev/img/tiny_logo.png' }}
-        style={{ width: 50, height: 150, resizeMode: 'stretch' }}
-      />
+        <Image
+          style={styles.base64Image}
+          source={{
+            uri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADMAAAAzCAYAAAA6oTAqAAAAEXRFWHRTb2Z0d2FyZQBwbmdjcnVzaEB1SfMAAABQSURBVGje7dSxCQBACARB+2/ab8BEeQNhFi6WSYzYLYudDQYGBgYGBgYGBgYGBgYGBgZmcvDqYGBgmhivGQYGBgYGBgYGBgYGBgYGBgbmQw+P/eMrC5UTVAAAAABJRU5ErkJggg==',
+          }}
+        />
 
-      <Switch
-        onValueChange={() => setOn((state) => !state)}
-        value={on}
-        thumbColor={on ? 'blue' : 'red'}
-      />
+        <View style={styles.themeButtons}>
+          <Pressable
+            onPress={() => Appearance.setColorScheme('light')}
+            style={styles.themeButton(themeColors)}
+          >
+            <Text style={styles.themeButtonText}>Motyw jasny</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => Appearance.setColorScheme('dark')}
+            style={styles.themeButton(themeColors)}
+          >
+            <Text style={styles.themeButtonText}>Motyw ciemny</Text>
+          </Pressable>
+        </View>
 
-      <StatusBar style="auto" />
-    </ScrollView>
+        <SettingsPanel
+          settings={settings}
+          onApply={applySettings}
+          fontOptions={fontOptions}
+          themeColors={themeColors}
+        />
+
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 48,
+    alignItems: 'center',
   },
-  paragraph: {
-    fontSize: 18,
+  background: {
+    flex: 1,
+    width: '100%',
   },
-  bold: {
-    fontWeight: 'bold',
+  backgroundImage: {
+    opacity: 0.08,
+    resizeMode: 'contain',
   },
-  circle: ({ light, radius, color }) => ({
-    borderRadius: radius,
-    borderWidth: 5,
-    borderColor: 'blue',
-    width: radius * 2,
-    height: radius * 2,
-    padding: 5,
-    backgroundColor: light ? color : 'darkblue',
+  container: {
+    padding: 18,
+    gap: 14,
+    alignItems: 'center',
+  },
+  subtitle: (themeColors, fontFamily) => ({
+    fontSize: 16,
+    color: themeColors.text,
+    fontFamily,
+    textAlign: 'center',
   }),
-  multiInput: {
-    padding: 5,
-    textAlignVertical: 'top',
-    width: '95%',
+  staticImage: (resizeMode) => ({
+    width: '70%',
+    height: 160,
+    resizeMode,
     borderWidth: 1,
-    borderRadius: 5,
+    borderColor: '#C9D0D6',
+  }),
+  dynamicImage: {
+    width: 220,
+    height: 120,
+    resizeMode: 'contain',
   },
-  radiusInput: {
-    width: '80%',
+  base64Image: {
+    width: 51,
+    height: 51,
+    resizeMode: 'contain',
+  },
+  button: (themeColors) => ({
+    borderRadius: 8,
+    backgroundColor: themeColors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  }),
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  themeButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  themeButton: (themeColors) => ({
     borderWidth: 1,
+    borderColor: themeColors.tint,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFFB0',
+  }),
+  themeButtonText: {
+    fontWeight: '600',
+    color: '#232323',
+  },
+  panel: {
+    width: '100%',
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#AAB4BE',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
