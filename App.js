@@ -3,18 +3,21 @@ import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
+import { LightSensor } from 'expo-sensors';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Appearance,
   Button,
   Image,
   ImageBackground,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
@@ -39,7 +42,93 @@ function HomeScreen({ navigation }) {
       <Button title="Przejdź do listy wiadomości" onPress={() => navigation.navigate('Posts')} />
       <View style={screenStyles.spacer} />
       <Button title="Otwórz poprzednie ćwiczenia" onPress={() => navigation.navigate('Lab10')} />
+      <View style={screenStyles.spacer} />
+      <Button title="Czujnik światła" onPress={() => navigation.navigate('Sensor')} />
+      <View style={screenStyles.spacer} />
+      <Button title="Flex i karta" onPress={() => navigation.navigate('FlexCard')} />
     </View>
+  );
+}
+
+function LightSensorScreen() {
+  const [{ illuminance }, setData] = useState({ illuminance: 0 });
+  const subscription = useRef(null);
+
+  const subscribe = () => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    if (typeof LightSensor.setUpdateInterval === 'function') {
+      LightSensor.setUpdateInterval(1000);
+    }
+
+    subscription.current = LightSensor.addListener(setData);
+  };
+
+  const unsubscribe = () => {
+    subscription.current?.remove();
+    subscription.current = null;
+  };
+
+  const toggleSubscribtion = () => {
+    if (subscription.current) {
+      unsubscribe();
+    } else {
+      subscribe();
+    }
+  };
+
+  useEffect(() => {
+    toggleSubscribtion();
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const onAndroid = Platform.OS === 'android';
+
+  return (
+    <View style={sensorStyles.sensor}>
+      <Text style={sensorStyles.title}>Light Sensor:</Text>
+      <Text style={sensorStyles.value}>{onAndroid ? `Illuminance: ${illuminance} lx` : 'Only available on Android'}</Text>
+      <View style={sensorStyles.buttonContainer}>
+        <TouchableOpacity onPress={toggleSubscribtion} style={sensorStyles.button} disabled={!onAndroid}>
+          <Text style={sensorStyles.buttonText}>Toggle</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function FlexCardScreen() {
+  return (
+    <ScrollView contentContainerStyle={flexCardStyles.container}>
+      <Text style={flexCardStyles.title}>Flex i karta</Text>
+
+      <View style={flexCardStyles.row}>
+        <View style={flexCardStyles.box('tomato')} />
+        <View style={flexCardStyles.box('goldenrod')} />
+        <View style={flexCardStyles.box('seagreen')} />
+      </View>
+
+      <View style={flexCardStyles.wrapArea}>
+        {['A', 'B', 'C', 'D', 'E', 'F'].map((label) => (
+          <View key={label} style={flexCardStyles.wrapChip}>
+            <Text style={flexCardStyles.wrapText}>{label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={flexCardStyles.card}>
+        <Text style={flexCardStyles.cornerTop}>A ♥</Text>
+        <View style={flexCardStyles.cardCenter}>
+          <Text style={flexCardStyles.bigSuit}>♥</Text>
+          <Text style={[flexCardStyles.bigSuit, flexCardStyles.rotatedSuit]}>♥</Text>
+        </View>
+        <Text style={[flexCardStyles.cornerBottom, flexCardStyles.rotatedCorner]}>A ♥</Text>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -202,6 +291,8 @@ export default function App() {
           }}
         >
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Witaj' }} />
+          <Stack.Screen name="Sensor" component={LightSensorScreen} options={{ title: 'Czujnik światła' }} />
+          <Stack.Screen name="FlexCard" component={FlexCardScreen} options={{ title: 'Flex i karta' }} />
           <Stack.Screen name="Posts">
             {(props) => (
               <PostsScreen
@@ -259,4 +350,118 @@ const lab10Styles = StyleSheet.create({
   themeButtonText: { fontWeight: '600', color: '#232323' },
   note: (themeColors, fontFamily) => ({ textAlign: 'center', color: themeColors.text, fontFamily }),
   saved: (themeColors, fontFamily) => ({ color: themeColors.text, fontFamily, fontWeight: '700' }),
+});
+
+const sensorStyles = StyleSheet.create({
+  sensor: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    padding: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  value: {
+    fontSize: 18,
+  },
+  buttonContainer: {
+    marginTop: 8,
+  },
+  button: {
+    backgroundColor: '#1E40AF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+});
+
+const flexCardStyles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    gap: 20,
+    backgroundColor: '#F4F7FB',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  box: (color) => ({
+    flex: 1,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: color,
+  }),
+  wrapArea: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  wrapChip: {
+    minWidth: 52,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: '#DDE7F2',
+    alignItems: 'center',
+  },
+  wrapText: {
+    fontWeight: '700',
+  },
+  card: {
+    width: 190,
+    height: 270,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D9E6',
+    alignSelf: 'center',
+    padding: 16,
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  cornerTop: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  cornerBottom: {
+    fontSize: 22,
+    fontWeight: '700',
+    alignSelf: 'flex-end',
+  },
+  rotatedCorner: {
+    transform: [{ rotate: '180deg' }],
+  },
+  cardCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bigSuit: {
+    fontSize: 48,
+    lineHeight: 54,
+    color: '#C1121F',
+  },
+  rotatedSuit: {
+    transform: [{ rotate: '180deg' }],
+    marginTop: 8,
+  },
 });
